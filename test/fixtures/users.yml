@@ -1,9 +1,0 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
-
-one:
-  name: Example User
-  email: one@example.com
-
-two:
-  name: Another User
-  email: two@example.com
