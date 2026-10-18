@@ -18,6 +18,7 @@ class UsersSignupTest < ActionDispatch::IntegrationTest
     assert_select "div#error_explanation"
     assert_select "div.alert-danger"
     assert_select "div#error_explanation li", minimum: 1
+    assert_not is_logged_in?
   end
 
   test "valid signup information" do
@@ -36,6 +37,8 @@ class UsersSignupTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_template "users/show"
     assert_select "div.alert-success", text: "Welcome to the Sample App!"
+    assert is_logged_in?
+    assert_equal User.last.id, session[:user_id]
   end
 
 end
