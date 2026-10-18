@@ -74,4 +74,39 @@ class UserTest < ActiveSupport::TestCase
     assert_equal @user, @user.authenticate("foobar")
     assert_not @user.authenticate("wrongpassword")
   end
+
+  test "remember stores a digest and accepts only the matching token" do
+    user = users(:michael)
+    digest = user.remember
+    token = user.remember_token
+    assert token.present?
+    assert_equal digest, user.reload.remember_digest
+    assert_not_equal token, digest
+    assert user.authenticated?(token)
+    assert_not user.authenticated?(User.new_token)
+    assert_nil User.find(user.id).remember_token
+  end
+
+  test "authenticated? returns false for a nil digest" do
+    assert_not @user.authenticated?("")
+  end
+
+  test "remember rotates the token and forget revokes it" do
+    user = users(:michael)
+    user.remember
+    old_token = user.remember_token
+    user.remember
+    assert_not user.authenticated?(old_token)
+    user.forget
+    assert_nil user.reload.remember_digest
+    assert_not user.authenticated?(old_token)
+  end
+
+  test "session token is stable until forgotten" do
+    user = users(:michael)
+    token = user.session_token
+    assert_equal token, user.reload.session_token
+    user.forget
+    assert_not_equal token, user.reload.session_token
+  end
 end
