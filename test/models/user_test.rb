@@ -10,6 +10,16 @@ class UserTest < ActiveSupport::TestCase
     assert @user.valid?
   end
 
+  test "new user still requires a password when it is nil" do
+    @user.password = @user.password_confirmation = nil
+    @user.password_digest = nil
+    assert_not @user.valid?
+  end
+
+  test "admin defaults to false" do
+    assert_not @user.admin?
+  end
+
   test "name should be present" do
     @user.name = " "
     assert_not @user.valid?

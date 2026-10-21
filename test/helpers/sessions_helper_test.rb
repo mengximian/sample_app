@@ -7,6 +7,14 @@ class SessionsHelperTest < ActionController::TestCase
     @user = users(:michael)
   end
 
+  test "current_user? checks identity and rejects nil" do
+    assert_not @controller.current_user?(nil)
+    assert_not @controller.current_user?(@user)
+    log_in_as(@user)
+    assert @controller.current_user?(@user)
+    assert_not @controller.current_user?(users(:archer))
+  end
+
   test "current_user restores the session from valid remember cookies" do
     @controller.remember(@user)
     assert_nil session[:user_id]
