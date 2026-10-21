@@ -13,7 +13,7 @@ class UsersIndexTest < ActionDispatch::IntegrationTest
     assert_select "div.pagination", count: 2
     assert_select "ul.users > li", count: 30
     assert_select "ul.users img.gravatar[src*='?s=50']", count: 30
-    User.paginate(page: 1).each do |user|
+    User.where(activated: true).paginate(page: 1).each do |user|
       assert_select "ul.users a[href=?]", user_path(user), text: user.name
       if user == @admin
         assert_select "a[href=?]", user_path(user), text: "delete", count: 0
@@ -29,8 +29,8 @@ class UsersIndexTest < ActionDispatch::IntegrationTest
     get users_path, params: { page: 2 }
     assert_response :success
     assert_select "div.pagination", count: 2
-    assert_select "ul.users > li", count: User.paginate(page: 2).length
-    User.paginate(page: 2).each do |user|
+    assert_select "ul.users > li", count: User.where(activated: true).paginate(page: 2).length
+    User.where(activated: true).paginate(page: 2).each do |user|
       assert_select "ul.users a[href=?]", user_path(user), text: user.name
     end
     assert_select "a[href=?]", user_path(@admin), text: "delete", count: 0
@@ -58,7 +58,18 @@ class UsersIndexTest < ActionDispatch::IntegrationTest
   end
 
   test "nil page selects the first page" do
-    assert_equal User.paginate(page: 1).map(&:id), User.paginate(page: nil).map(&:id)
-    assert_equal 30, User.paginate(page: nil).size
+    assert_equal User.where(activated: true).paginate(page: 1).map(&:id), User.where(activated: true).paginate(page: nil).map(&:id)
+    assert_equal 30, User.where(activated: true).paginate(page: nil).size
+  end
+
+  test "index excludes an inactive user that would otherwise be on the first page" do
+    log_in_as(@admin)
+    hidden = User.where(activated: true).paginate(page: 1).find { |user| user != @admin }
+    hidden.update_columns(activated: false)
+    get users_path
+    assert_response :success
+    assert_select "ul.users a[href=?]", user_path(hidden), count: 0
+    assert_select "ul.users a[href=?]", user_path(users(:inactive)), count: 0
+    assert assigns(:users).all?(&:activated?)
   end
 end
