@@ -75,7 +75,7 @@ class UsersLoginTest < ActionDispatch::IntegrationTest
     log_in_as(@user)
     assert is_logged_in?
     assert_equal assigns(:user).remember_token, cookies[:remember_token]
-    assert @user.reload.authenticated?(cookies[:remember_token])
+    assert @user.reload.authenticated?(:remember, cookies[:remember_token])
     assert cookies[:user_id].present?
     assert_not_equal @user.id.to_s, cookies[:user_id]
     assert_equal @user.remember_digest, session[:session_token]

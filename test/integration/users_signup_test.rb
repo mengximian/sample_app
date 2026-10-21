@@ -1,6 +1,12 @@
 require "test_helper"
 
-class UsersSignupTest < ActionDispatch::IntegrationTest
+class UsersSignup < ActionDispatch::IntegrationTest
+  def setup
+    ActionMailer::Base.deliveries.clear
+  end
+end
+
+class UsersSignupTest < UsersSignup
   test "invalid signup information" do
     get signup_path
     assert_no_difference "User.count" do
@@ -19,6 +25,7 @@ class UsersSignupTest < ActionDispatch::IntegrationTest
     assert_select "div.alert-danger"
     assert_select "div#error_explanation li", minimum: 1
     assert_not is_logged_in?
+    assert_empty ActionMailer::Base.deliveries
   end
 
   test "valid signup information" do
@@ -33,12 +40,14 @@ class UsersSignupTest < ActionDispatch::IntegrationTest
         }
       }
     end
-    assert_redirected_to user_url(User.last)
+    assert_redirected_to root_url
+    assert_equal 1, ActionMailer::Base.deliveries.size
+    assert_not User.last.activated?
+    assert_nil User.last.activated_at
+    assert_not is_logged_in?
     follow_redirect!
-    assert_template "users/show"
-    assert_select "div.alert-success", text: "Welcome to the Sample App!"
-    assert is_logged_in?
-    assert_equal User.last.id, session[:user_id]
+    assert_template "static_pages/home"
+    assert_select "div.alert-info", text: "Please check your email to activate your account."
   end
 
 end

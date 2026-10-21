@@ -92,13 +92,13 @@ class UserTest < ActiveSupport::TestCase
     assert token.present?
     assert_equal digest, user.reload.remember_digest
     assert_not_equal token, digest
-    assert user.authenticated?(token)
-    assert_not user.authenticated?(User.new_token)
+    assert user.authenticated?(:remember, token)
+    assert_not user.authenticated?(:remember, User.new_token)
     assert_nil User.find(user.id).remember_token
   end
 
   test "authenticated? returns false for a nil digest" do
-    assert_not @user.authenticated?("")
+    assert_not @user.authenticated?(:remember, "")
   end
 
   test "remember rotates the token and forget revokes it" do
@@ -106,10 +106,10 @@ class UserTest < ActiveSupport::TestCase
     user.remember
     old_token = user.remember_token
     user.remember
-    assert_not user.authenticated?(old_token)
+    assert_not user.authenticated?(:remember, old_token)
     user.forget
     assert_nil user.reload.remember_digest
-    assert_not user.authenticated?(old_token)
+    assert_not user.authenticated?(:remember, old_token)
   end
 
   test "session token is stable until forgotten" do
@@ -118,5 +118,46 @@ class UserTest < ActiveSupport::TestCase
     assert_equal token, user.reload.session_token
     user.forget
     assert_not_equal token, user.reload.session_token
+  end
+
+  test "activation token is generated only on creation and is not persisted" do
+    assert_nil @user.activation_token
+    assert_nil @user.activation_digest
+    @user.save!
+    assert @user.activation_token.present?
+    assert @user.authenticated?(:activation, @user.activation_token)
+    assert_not @user.authenticated?(:activation, User.new_token)
+    assert_not @user.activated?
+    assert_nil @user.activated_at
+    saved_digest = @user.activation_digest
+    fresh = User.find(@user.id)
+    assert_nil fresh.activation_token
+    fresh.update!(name: "Changed")
+    assert_equal saved_digest, fresh.reload.activation_digest
+    assert_nil fresh.activation_token
+    assert_raises(NoMethodError) { fresh.create_activation_digest }
+  end
+
+  test "activation nil digest is rejected" do
+    assert_not @user.authenticated?(:activation, "")
+  end
+
+  test "activate writes both attributes once without changing updated_at" do
+    @user.save!
+    updated_at = @user.updated_at
+    writes = []
+    subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*args|
+      sql = args.last[:sql]
+      writes << sql if sql.start_with?("UPDATE")
+    end
+    begin
+      @user.activate
+    ensure
+      ActiveSupport::Notifications.unsubscribe(subscriber)
+    end
+    assert_equal 1, writes.size
+    assert @user.reload.activated?
+    assert_not_nil @user.activated_at
+    assert_equal updated_at, @user.updated_at
   end
 end

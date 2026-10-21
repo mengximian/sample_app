@@ -100,4 +100,24 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_equal "User deleted", flash[:success]
     assert_nil User.find_by(id: @other_user.id)
   end
+
+  test "activation attributes cannot be set through signup or update" do
+    post users_path, params: { user: { name: "Forged", email: "forged@example.net",
+                                      password: "password", password_confirmation: "password",
+                                      activated: true, activated_at: Time.zone.now,
+                                      activation_digest: "forged" } }
+    user = User.find_by!(email: "forged@example.net")
+    assert_not user.activated?
+    assert_nil user.activated_at
+    assert_not_equal "forged", user.activation_digest
+
+    log_in_as(@other_user)
+    activated_at = @other_user.activated_at
+    patch user_path(@other_user), params: { user: { activated: false, activated_at: nil,
+                                                  activation_digest: "forged" } }
+    assert_redirected_to @other_user
+    assert @other_user.reload.activated?
+    assert_equal activated_at, @other_user.activated_at
+    assert_nil @other_user.activation_digest
+  end
 end
