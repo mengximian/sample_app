@@ -46,7 +46,7 @@ class UsersLoginTest < ActionDispatch::IntegrationTest
     assert_template "users/show"
     assert_select "a[href=?]", login_path, count: 0
     assert_select "a[href=?][data-turbo-method=delete]", logout_path, count: 1
-    assert_select "a[href=?]", user_path(@user), count: 1
+    assert_select "header a[href=?]", user_path(@user), count: 1
 
     delete logout_path
     assert_not is_logged_in?
@@ -55,7 +55,7 @@ class UsersLoginTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_select "a[href=?]", login_path, count: 1
     assert_select "a[href=?]", logout_path, count: 0
-    assert_select "a[href=?]", user_path(@user), count: 0
+    assert_select "header a[href=?]", user_path(@user), count: 0
 
     # A second tab may still show its old logout link.
     delete logout_path
