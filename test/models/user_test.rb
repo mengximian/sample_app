@@ -160,4 +160,46 @@ class UserTest < ActiveSupport::TestCase
     assert_not_nil @user.activated_at
     assert_equal updated_at, @user.updated_at
   end
+
+  test "reset token is explicit, temporary, rotated and stored as one digest update" do
+    user = users(:michael)
+    assert_nil user.reset_token
+    assert_nil user.reset_digest
+    updated_at = user.updated_at
+    writes = []
+    subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*args|
+      writes << args.last[:sql] if args.last[:sql].start_with?("UPDATE")
+    end
+    begin
+      user.create_reset_digest
+    ensure
+      ActiveSupport::Notifications.unsubscribe(subscriber)
+    end
+    assert_equal 1, writes.size
+    token = user.reset_token
+    assert token.present?
+    assert_not_equal token, user.reset_digest
+    assert user.authenticated?(:reset, token)
+    assert_not user.authenticated?(:reset, User.new_token)
+    assert_not_nil user.reset_sent_at
+    assert_equal updated_at, user.reload.updated_at
+    assert_nil User.find(user.id).reset_token
+    user.create_reset_digest
+    assert_not user.authenticated?(:reset, token)
+  end
+
+  test "nil reset digest never authenticates" do
+    assert_not @user.authenticated?(:reset, "")
+  end
+
+  test "password reset expires only after two hours" do
+    travel_to Time.zone.local(2026, 10, 22, 12) do
+      @user.reset_sent_at = 2.hours.ago
+      assert_not @user.password_reset_expired?
+      @user.reset_sent_at = 2.hours.ago - 1.second
+      assert @user.password_reset_expired?
+      @user.reset_sent_at = 1.hour.ago
+      assert_not @user.password_reset_expired?
+    end
+  end
 end
