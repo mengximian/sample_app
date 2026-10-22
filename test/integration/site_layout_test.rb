@@ -29,7 +29,7 @@ class SiteLayoutTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_select "a[href=?]", users_path, text: "Users", count: 1
     assert_select "a[href=?]", edit_user_path(user), text: "Settings", count: 1
-    assert_select "a[href=?]", user_path(user), text: "Profile", count: 1
+    assert_select "header a[href=?]", user_path(user), text: "Profile", count: 1
     assert_select "a[href=?][data-turbo-method=delete]", logout_path, count: 1
     assert_select "a[href=?]", login_path, count: 0
   end

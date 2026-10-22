@@ -202,4 +202,20 @@ class UserTest < ActiveSupport::TestCase
       assert_not @user.password_reset_expired?
     end
   end
+
+  test "associated microposts are destroyed with user" do
+    @user.save!
+    post = @user.microposts.create!(content: "Dependent post")
+    assert_difference "Micropost.count", -1 do
+      @user.destroy
+    end
+    assert_nil Micropost.find_by(id: post.id)
+  end
+
+  test "Chapter 13 feed contains only own microposts" do
+    user = users(:michael)
+    assert_equal user.microposts.pluck(:id), user.feed.pluck(:id)
+    user.feed.each { |post| assert_equal user.id, post.user_id }
+    assert_not_includes user.feed, microposts(:ants)
+  end
 end
